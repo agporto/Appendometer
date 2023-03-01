@@ -1,11 +1,8 @@
 # Part of the standard library
 import xml.etree.ElementTree as ET
 from xml.dom import minidom
-import os
 import csv
 import re
-import random
-import shutil
 import glob
 import ntpath
 
@@ -76,15 +73,34 @@ def create_part(x, y, id):
         part (Element): part element
     """
     part = ET.Element("part")
-    part.set("name", int(id))
+    part.set("name", str(int(id)))
     part.set("x", str(int(x)))
     part.set("y", str(int(y)))
 
     return part
 
 
-def predictions_to_xml_tta(
-    predictor_name: str, dir: str, ignore=None, out_file="output.xml", var_threshold=43
+def pretty_xml(elem, out):
+    """
+    Writes the xml file to disk
+
+    Parameters:
+    ----------
+        elem (Element): root element
+        out (str): name of the output file
+
+    Returns:
+    ----------
+        None (xml file written to disk)
+    """
+    et = ET.ElementTree(elem)
+    xmlstr = minidom.parseString(ET.tostring(et.getroot())).toprettyxml(indent="   ")
+    with open(out, "w") as f:
+        f.write(xmlstr)
+
+
+def predictions_to_xml(
+    predictor_name: str, folder: str, ignore=None, output="output.xml", max_error=43.0
 ):
     """
     Generates dlib format xml files for model predictions. It uses previously trained models to
@@ -104,50 +120,43 @@ def predictions_to_xml_tta(
     """
     extensions = {".jpg", ".jpeg", ".tif", ".png", ".bmp"}
     scales = [0.25, 0.5, 1]
+    files = glob.glob(f"./{folder}/*")
 
     predictor = dlib.shape_predictor(predictor_name)
 
-    high_var_root, high_var_images_e = initialize_xml()
-    low_var_root, low_var_images_e = initialize_xml()
+    error_root, error_images_e = initialize_xml()
+    accurate_root, accurate_images_e = initialize_xml()
 
     kernel = np.ones((7, 7), np.float32) / 49
 
-    image_count = 0
-    for f in glob.glob(f"./{dir}/*"):
+    print_error = False
+
+    for f in sorted(files, key=str):
         ext = ntpath.splitext(f)[1]
         if ext.lower() in extensions:
-            image_count += 1
-            print(f"Processing image {image_count}")
+            print(f"Processing image {f}")
             image_e = ET.Element("image")
             image_e.set("file", str(f))
             img = cv2.imread(f)
             img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-
-            # Apply test time augmentation on the image
-
-            all_preds = []
+            w = img.shape[1]
+            h = img.shape[0]
+            landmarks = []
             for scale in scales:
-                # Resize the image
                 image = cv2.resize(img, (0, 0), fx=scale, fy=scale)
                 image = cv2.filter2D(image, -1, kernel)
                 image = cv2.bilateralFilter(image, 9, 41, 21)
 
-                e = dlib.rectangle(
-                    left=1,
-                    top=1,
-                    right=int(image.shape[1]) - 1,
-                    bottom=int(image.shape[0]) - 1,
-                )
-
-                shape = predictor(image, e)
-                all_preds.append(shape_to_np(shape) * 1 / scale)
+                rect = dlib.rectangle(1, 1, int(w * scale) - 1, int(h * scale) - 1)
+                shape = predictor(image, rect)
+                landmarks.append(shape_to_np(shape) / scale)
 
             box = create_box(img.shape)
             part_length = range(0, shape.num_parts)
             count = 0
             for item, i in enumerate(sorted(part_length, key=str)):
-                x = np.median([pred[item][0] for pred in all_preds])
-                y = np.median([pred[item][1] for pred in all_preds])
+                x = np.median([landmark[item][0] for landmark in landmarks])
+                y = np.median([landmark[item][1] for landmark in landmarks])
                 if ignore is not None:
                     if i not in ignore:
                         part = create_part(x, y, i)
@@ -156,50 +165,38 @@ def predictions_to_xml_tta(
                     part = create_part(x, y, i)
                     box.append(part)
 
-                # Calculate variance for each part x and y position
-                positions = np.array(all_preds)[:, item]  # select positions for the landmark
-                positions_x, positions_y = (positions[:, 0], positions[:, 1])  # separate x and y positions
-
-                # Step 1: Compute the mean X and Y positions of the landmark.
-                mean_x, mean_y = np.mean(positions_x), np.mean(positions_y)
-
-                # Step 2: Compute the Euclidean distance between each observation's X and Y positions and the mean X and Y positions.
-                distances = np.sqrt(
-                    (positions_x - mean_x) ** 2 + (positions_y - mean_y) ** 2
+                pos = np.array(landmarks)[:, item]
+                pos_x, pos_y = (
+                    pos[:, 0],
+                    pos[:, 1],
                 )
 
-                # Step 3: Take the average of the Euclidean distances to get the average Euclidean distance from the mean.
+                mean_x, mean_y = np.mean(pos_x), np.mean(pos_y)
+                distances = np.sqrt((pos_x - mean_x) ** 2 + (pos_y - mean_y) ** 2)
                 total_variance = np.mean(distances)
 
-                # Check if the variance is greater than the threshold and add the image to the corresponding xml
-                if total_variance > var_threshold:
-                    print(f"High variance image: {f}")
-                    print(f"Variance: {total_variance}")
-
+                if total_variance > max_error:
+                    print(f"High error landmark: {item}")
+                    print(f"Error: {total_variance}")
                     count += 1
+
                 else:
                     pass
+
         box[:] = sorted(box, key=lambda child: (child.tag, float(child.get("name"))))
         image_e.append(box)
+
         if count > 1:
-            high_var_images_e.append(image_e)
+            print_error = True
+            error_images_e.append(image_e)
+
         else:
-            low_var_images_e.append(image_e)
+            accurate_images_e.append(image_e)
 
     # Write the xml files to disk
-    high_var_et = ET.ElementTree(high_var_root)
-    high_var_xmlstr = minidom.parseString(
-        ET.tostring(high_var_et.getroot())
-    ).toprettyxml(indent="   ")
-    with open("high_var_" + out_file, "w") as f:
-        f.write(high_var_xmlstr)
-
-    low_var_et = ET.ElementTree(low_var_root)
-    low_var_xmlstr = minidom.parseString(ET.tostring(low_var_et.getroot())).toprettyxml(
-        indent="   "
-    )
-    with open("low_var_" + out_file, "w") as f:
-        f.write(low_var_xmlstr)
+    if print_error:
+        pretty_xml(error_root, "error_" + output)
+    pretty_xml(accurate_root, "accurate_" + output)
 
 
 def shape_to_np(shape):
@@ -231,7 +228,7 @@ def shape_to_np(shape):
 # Importing to pandas tools
 
 
-def natural_sort_XY(l):
+def natural_sort(l):
     """
     Internal function used by the dlib_xml_to_pandas. Performs the natural sorting of an array of XY
     coordinate names.
@@ -240,7 +237,7 @@ def natural_sort_XY(l):
     ----------
         l(array)=array to be sorted
 
-    Returns:
+    Returns:natural_sort_XY
     ----------
         l(array): naturally sorted array
     """
@@ -293,7 +290,7 @@ def dlib_xml_to_pandas(xml_file: str, parse=False):
                     landmark_list.append(data)
     dataset = pd.DataFrame(landmark_list)
     df = dataset.groupby(["id", "box_id"], sort=False).max()
-    df = df[natural_sort_XY(df)]
+    df = df[natural_sort(df)]
     basename = ntpath.splitext(xml_file)[0]
     df.to_csv(f"{basename}.csv")
     return df

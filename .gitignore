@@ -1,0 +1,4 @@
+*.csv
+*.tps
+*.xml
+__pycache__/

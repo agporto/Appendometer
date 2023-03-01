@@ -1,6 +1,6 @@
 import argparse
 import utils
-
+import ntpath
 
 ap = argparse.ArgumentParser()
 ap.add_argument(
@@ -38,10 +38,10 @@ ap.add_argument(
 )
 ap.add_argument(
     "-m",
-    "--multiscale",
+    "--max-error",
     type=int,
     default=None,
-    help=" performs multiscale prediction to help identify errors (default = None)",
+    help=" performs multiscale prediction to help estimate prediction error (default = None)",
     metavar="",
 )
 
@@ -53,14 +53,17 @@ utils.predictions_to_xml(
     folder=args["input_dir"],
     ignore=args["ignore_list"],
     output=args["out_file"],
-    multiscale=args["multiscale"],
+    max_error=args["max_error"],
 
 )
-if not args["multiscale"]:
+if not args["max_error"]:
     utils.dlib_xml_to_pandas(args["out_file"])
     utils.dlib_xml_to_tps(args["out_file"])
 else:
-    utils.dlib_xml_to_pandas("high_var_" + args["out_file"])
-    utils.dlib_xml_to_tps("high_var_" + args["out_file"])
-    utils.dlib_xml_to_pandas("low_var_" + args["out_file"])
-    utils.dlib_xml_to_tps("low_var_" + args["out_file"])
+    # check if the file exists prior to converting to pandas and tps
+    if ntpath.exists("error_" + args["out_file"]):
+        utils.dlib_xml_to_pandas("error_" + args["out_file"])
+        utils.dlib_xml_to_tps("error_" + args["out_file"])
+    if ntpath.exists("accurate_" + args["out_file"]):
+        utils.dlib_xml_to_pandas("accurate_" + args["out_file"])
+        utils.dlib_xml_to_tps("accurate_" + args["out_file"])
