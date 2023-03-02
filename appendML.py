@@ -41,7 +41,7 @@ ap.add_argument(
     "--max-error",
     type=int,
     default=None,
-    help=" performs multiscale prediction to help estimate prediction error (default = None)",
+    help=" maximum prediction error (default = None)",
     metavar="",
 )
 
@@ -56,7 +56,7 @@ utils.predictions_to_xml(
     max_error=args["max_error"],
 
 )
-if not args["max_error"]:
+if args["max_error"] is None:
     utils.dlib_xml_to_pandas(args["out_file"])
     utils.dlib_xml_to_tps(args["out_file"])
 else:

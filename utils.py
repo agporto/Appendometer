@@ -100,7 +100,7 @@ def pretty_xml(elem, out):
 
 
 def predictions_to_xml(
-    predictor_name: str, folder: str, ignore=None, output="output.xml", max_error=43.0
+    predictor_name: str, folder: str, ignore=None, output="output.xml", max_error=None
 ):
     """
     Generates dlib format xml files for model predictions. It uses previously trained models to
@@ -175,10 +175,11 @@ def predictions_to_xml(
                 distances = np.sqrt((pos_x - mean_x) ** 2 + (pos_y - mean_y) ** 2)
                 total_variance = np.mean(distances)
 
-                if total_variance > max_error:
-                    print(f"High error landmark: {item}")
-                    print(f"Error: {total_variance}")
-                    count += 1
+                if max_error is not None:
+                    if total_variance > max_error:
+                        print(f"High error landmark: {item}")
+                        print(f"Error: {total_variance}")
+                        count += 1
 
                 else:
                     pass
@@ -194,9 +195,12 @@ def predictions_to_xml(
             accurate_images_e.append(image_e)
 
     # Write the xml files to disk
-    if print_error:
-        pretty_xml(error_root, "error_" + output)
-    pretty_xml(accurate_root, "accurate_" + output)
+    if max_error is None:
+        pretty_xml(accurate_root, output)
+    else:
+        if print_error:
+            pretty_xml(error_root, "error_" + output)
+        pretty_xml(accurate_root, "accurate_" + output)
 
 
 def shape_to_np(shape):
