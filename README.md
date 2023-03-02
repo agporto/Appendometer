@@ -25,11 +25,11 @@ pip install -r requirements.txt
 
 ## Usage
 
-Once the packages are installed, you can use the codebase by running the appendML.py file. This file takes in several arguments, which are described below:
+Once the packages are installed, you can use the codebase by running the `appendML.py` command line interface. This file takes in several **optional** arguments, which are described below:
 
-* `-i` or `--input-dir`: The input directory (default = images)
-* `-p` or `--predictor`: The trained shape prediction model (default = resources/predictor.dat)
-* `-o` or `--out-file`: The output filename suffix (default = output.xml)
+* `-i` or `--input-dir`: (optional) The input directory (default = images)
+* `-p` or `--predictor`: (optional) The trained shape prediction model (default = resources/predictor.dat)
+* `-o` or `--out-file`: (optional) The output filename suffix (default = output.xml)
 * `-l` or `--ignore-list`: (optional) prevents landmarks of choice from being output
 * `-m` or `--max-error`: (optional) maximum prediction error in pixels
 
