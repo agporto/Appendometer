@@ -38,3 +38,9 @@ Example prompt:
 ```
 python appendML.py -i images/ -p resources/predictor.dat -m 42
 ```
+
+## Citation
+
+```
+Coming soon!
+```
