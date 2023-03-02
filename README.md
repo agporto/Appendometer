@@ -2,7 +2,7 @@
 
 This is the source code for the machine learning based version of the drosophila `Appendometer`. It performs landmark prediction in drosophila images using the [ml-morph](https://github.com/agporto/simple-ml-morph) pipeline.
 
-<p align="center"><img src="https://github.com/agporto/Appendometer/blob/master/images/logo.jpg" width="800"></p>
+<p align="center"><img src="https://github.com/agporto/Appendometer/blob/master/resources/logo.jpg" width="800"></p>
 
 
 ## Install
