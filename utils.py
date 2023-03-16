@@ -132,6 +132,7 @@ def predictions_to_xml(
     print_error = False
 
     for f in sorted(files, key=str):
+        count = 0
         ext = ntpath.splitext(f)[1]
         if ext.lower() in extensions:
             print(f"Processing image {f}")
@@ -153,7 +154,7 @@ def predictions_to_xml(
 
             box = create_box(img.shape)
             part_length = range(0, shape.num_parts)
-            count = 0
+            
             for item, i in enumerate(sorted(part_length, key=str)):
                 x = np.median([landmark[item][0] for landmark in landmarks])
                 y = np.median([landmark[item][1] for landmark in landmarks])
@@ -184,15 +185,15 @@ def predictions_to_xml(
                 else:
                     pass
 
-        box[:] = sorted(box, key=lambda child: (child.tag, float(child.get("name"))))
-        image_e.append(box)
+            box[:] = sorted(box, key=lambda child: (child.tag, float(child.get("name"))))
+            image_e.append(box)
 
-        if count > 1:
-            print_error = True
-            error_images_e.append(image_e)
+            if count > 1:
+                print_error = True
+                error_images_e.append(image_e)
 
-        else:
-            accurate_images_e.append(image_e)
+            else:
+                accurate_images_e.append(image_e)
 
     # Write the xml files to disk
     if max_error is None:
