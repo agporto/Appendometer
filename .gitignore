@@ -2,3 +2,4 @@
 *.tps
 *.xml
 __pycache__/
+.Rhistory

@@ -32,13 +32,15 @@ Once the packages are installed, you can use the codebase by running the `append
 * `-p` or `--predictor`: (optional) The trained shape prediction model (default = resources/predictor.dat)
 * `-o` or `--out-file`: (optional) The output filename suffix (default = output.xml)
 * `-l` or `--ignore-list`: (optional) prevents landmarks of choice from being output
-* `-m` or `--max-error`: (optional) maximum prediction error in pixels
 
 Example prompt:
 
 ```
-python appendML.py -i images/ -p resources/predictor.dat -m 42
+python appendML.py -i images/ -p resources/predictor.dat
 ```
+The resulting output.xml file can be used to visualize the predicted landmarks in `imglab`.
+
+Note that `appendML.py` will automatically sort images files according to their inferred prediction error. The images with the highest error will be shown first.
 
 ## Citation
 
