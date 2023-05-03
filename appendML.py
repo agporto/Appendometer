@@ -36,14 +36,7 @@ ap.add_argument(
     help=" (optional) prevents landmarks of choice from being output",
     metavar="",
 )
-ap.add_argument(
-    "-m",
-    "--max-error",
-    type=int,
-    default=None,
-    help=" maximum prediction error (default = None)",
-    metavar="",
-)
+
 
 
 args = vars(ap.parse_args())
@@ -53,17 +46,7 @@ utils.predictions_to_xml(
     folder=args["input_dir"],
     ignore=args["ignore_list"],
     output=args["out_file"],
-    max_error=args["max_error"],
-
 )
-if args["max_error"] is None:
-    utils.dlib_xml_to_pandas(args["out_file"])
-    utils.dlib_xml_to_tps(args["out_file"])
-else:
-    # check if the file exists prior to converting to pandas and tps
-    if ntpath.exists("error_" + args["out_file"]):
-        utils.dlib_xml_to_pandas("error_" + args["out_file"])
-        utils.dlib_xml_to_tps("error_" + args["out_file"])
-    if ntpath.exists("accurate_" + args["out_file"]):
-        utils.dlib_xml_to_pandas("accurate_" + args["out_file"])
-        utils.dlib_xml_to_tps("accurate_" + args["out_file"])
+
+utils.dlib_xml_to_pandas(args["out_file"])
+utils.dlib_xml_to_tps(args["out_file"])

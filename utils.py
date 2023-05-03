@@ -100,8 +100,7 @@ def pretty_xml(elem, out):
 
 
 def predictions_to_xml(
-    predictor_name: str, folder: str, ignore=None, output="output.xml", max_error=None
-):
+    predictor_name: str, folder: str, ignore=None, output="output.xml"):
     """
     Generates dlib format xml files for model predictions. It uses previously trained models to
     identify objects in images and to predict their shape.
@@ -124,15 +123,13 @@ def predictions_to_xml(
 
     predictor = dlib.shape_predictor(predictor_name)
 
-    error_root, error_images_e = initialize_xml()
-    accurate_root, accurate_images_e = initialize_xml()
+    root, images_e = initialize_xml()
 
     kernel = np.ones((7, 7), np.float32) / 49
 
-    print_error = False
 
     for f in sorted(files, key=str):
-        count = 0
+        error = 0
         ext = ntpath.splitext(f)[1]
         if ext.lower() in extensions:
             print(f"Processing image {f}")
@@ -175,33 +172,20 @@ def predictions_to_xml(
                 mean_x, mean_y = np.mean(pos_x), np.mean(pos_y)
                 distances = np.sqrt((pos_x - mean_x) ** 2 + (pos_y - mean_y) ** 2)
                 total_variance = np.mean(distances)
+                error += total_variance
+                
 
-                if max_error is not None:
-                    if total_variance > max_error:
-                        print(f"High error landmark: {item}")
-                        print(f"Error: {total_variance}")
-                        count += 1
-
-                else:
-                    pass
 
             box[:] = sorted(box, key=lambda child: (child.tag, float(child.get("name"))))
             image_e.append(box)
+            image_e.set("error", str(error))
+            images_e.append(image_e)
+        
+    images_e[:] = sorted(
+            images_e, key=lambda child: (child.tag, float(child.get("error"))), reverse=True
+    )
 
-            if count > 1:
-                print_error = True
-                error_images_e.append(image_e)
-
-            else:
-                accurate_images_e.append(image_e)
-
-    # Write the xml files to disk
-    if max_error is None:
-        pretty_xml(accurate_root, output)
-    else:
-        if print_error:
-            pretty_xml(error_root, "error_" + output)
-        pretty_xml(accurate_root, "accurate_" + output)
+    pretty_xml(root, output)
 
 
 def shape_to_np(shape):
